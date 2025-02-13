@@ -2,12 +2,13 @@ package functions
 
 
 import (
+  "fmt"
+  "log"
   "crypto/sha256"
   "encoding/hex"
   "encoding/json"
-  "log"
-  "fmt"
   "github.com/mitchellh/mapstructure"
+  "TermoChat/config"
 )
 
 
@@ -21,8 +22,10 @@ func Map2Obj(data map[string]interface{}, obj interface{}) interface{} {
   return obj
 }
 
-// Creates a hash of some sample map data
-func CreateDataHash(data map[string]interface{}) string {
+// Creating hash using secret key and data
+func CreateHash(data map[string]interface{}) string {
+  secretKey := config.LoadEnv().SECRET
+  data["SECRET"] = secretKey
   jsonBytes, err := json.Marshal(data)
   if err != nil {
     log.Fatalf("Error: %v", err)

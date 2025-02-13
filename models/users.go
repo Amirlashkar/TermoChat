@@ -7,16 +7,16 @@ import (
 
 
 type User struct {
-  Showname string
-  Password string
+  ShowName        string
+  PassHash        string
   RelatedQuestion string
-  RelatedAnswer string
-  Hash string
-  is_logged bool
+  RelatedAnswer   string
+  Hash            string
+  IsLogged        bool
 }
 
 type RoomClient struct {
-  User *User
-  Conn *websocket.Conn
-  RoomHash string
+  UserHash  string
+  Conn      *websocket.Conn
+  RoomHash  string
 }

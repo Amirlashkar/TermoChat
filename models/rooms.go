@@ -2,6 +2,9 @@ package models
 
 
 type Room struct {
-  Hash string
-  Clients []*RoomClient
+  Name        string
+  CreatorHash string
+  Hash        string
+  IsPublic    bool
+  Clients     []*RoomClient
 }
