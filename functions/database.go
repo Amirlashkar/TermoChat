@@ -4,6 +4,7 @@ package functions
 import (
   "fmt"
   "log"
+  "strings"
   "database/sql"
   "TermoChat/models"
   "TermoChat/config"
@@ -184,20 +185,97 @@ func DelUser(ShowName string) {
 }
 
 // List Public rooms
-func ListPubRooms() []string {
+func ListRooms() []string {
   db := DBConnect()
   defer db.Close()
 
   execSQL := `
     SELECT hash FROM rooms
   `
+
+  rows, err := db.Query(execSQL)
+  defer rows.Close()
+
   var hashes []string
-  row := db.QueryRow(execSQL)
-  err := row.Scan(&hashes)
+  for rows.Next() {
+    var hash string
+    if err := rows.Scan(&hash); err != nil {
+      log.Println("ERROR: ", err)
+      return nil
+    }
+    hashes = append(hashes, hash)
+  }
+
   if err != nil {
-    log.Println("ERROR: ", err)
+    log.Printf("ERROR: %s", err)
     return nil
+  }
+  return hashes
+}
+
+// Getting room info
+func GetRoom(name string) *models.Room {
+  db := DBConnect()
+  defer db.Close()
+
+  execSQL := `
+    SELECT name, creator_hash, hash, is_public, clients FROM rooms WHERE name = $1;
+  `
+  row := db.QueryRow(execSQL, name)
+  var room models.Room
+  var clientsStr string
+  err := row.Scan(
+    &room.Name, &room.CreatorHash, &room.Hash,
+    &room.IsPublic, &clientsStr,
+  )
+  room.Clients = strings.Split(clientsStr, ",")
+  if err != nil {
+    log.Printf("ERROR: %s", err)
+    return nil
+  }
+
+  return &room
+}
+
+// Creates new room
+func BuildRoom(name string, creatorHash string, isPublic bool) {
+  db := DBConnect()
+  defer db.Close()
+
+  roomHash := CreateHash(map[string]interface{} {
+    "Name":         name,
+    "CreatorHash":  creatorHash,
+  })
+
+  roomCheck := GetRoom(name)
+  if roomCheck != nil {
+    log.Printf("ERROR: Room(%s) already exists", name)
+    return
+  }
+
+  room := models.Room {
+    Name:         name,
+    CreatorHash:  creatorHash,
+    Hash:         roomHash,
+    IsPublic:     isPublic,
+    Clients:      []string{creatorHash},
+  }
+
+  execSQL := `
+    INSERT INTO rooms (
+      name, creator_hash, hash, is_public, clients
+    ) VALUES (
+      $1, $2, $3, $4, ARRAY[$5]
+    );
+  `
+
+  _, err := db.Exec(execSQL, &room.Name, &room.CreatorHash,
+                    &room.Hash, &room.IsPublic, creatorHash,
+  )
+  if err != nil {
+    log.Printf("ERROR: %s", err)
   } else {
-    return hashes
+    log.Printf("SUCCESS: Room(%s) built", name)
   }
 }
+
