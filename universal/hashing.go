@@ -1,26 +1,18 @@
-package functions
+package universal
 
 
 import (
-  "fmt"
+  // "fmt"
   "log"
   "crypto/sha256"
   "encoding/hex"
   "encoding/json"
-  "github.com/mitchellh/mapstructure"
+
   "TermoChat/config"
+
+  // "github.com/mitchellh/mapstructure"
+	// "github.com/gorilla/websocket"
 )
-
-
-// Makes a custom object from its data map
-func Map2Obj(data map[string]interface{}, obj interface{}) interface{} {
-  err := mapstructure.Decode(data, &obj)
-  if err != nil {
-    fmt.Printf("mapstructure Error: %s", err)
-    return nil
-  }
-  return obj
-}
 
 // Creating hash using secret key and data
 func CreateHash(data map[string]interface{}) string {
@@ -34,3 +26,5 @@ func CreateHash(data map[string]interface{}) string {
   hash := sha256.Sum256(jsonBytes)
   return hex.EncodeToString(hash[:])
 }
+
+
