@@ -28,14 +28,22 @@ func ProvideRouter() *mux.Router{
   repassURL := fmt.Sprintf("/%s", repassH)
 
   usersRout := router.PathPrefix(usersURL).Subrouter()
-  usersRout.HandleFunc(signupURL, signup).Methods("GET")
-  usersRout.HandleFunc(loginURL, login).Methods("GET")
-  usersRout.HandleFunc(logoutURL, logout).Methods("GET")
-  usersRout.HandleFunc(renameURL, rename).Methods("GET")
-  usersRout.HandleFunc(repassURL, repass).Methods("GET")
+  usersRout.HandleFunc(signupURL, user_signup).Methods("GET")
+  usersRout.HandleFunc(loginURL, user_login).Methods("GET")
+  usersRout.HandleFunc(logoutURL, user_logout).Methods("GET")
+  usersRout.HandleFunc(renameURL, user_rename).Methods("GET")
+  usersRout.HandleFunc(repassURL, user_repass).Methods("GET")
   // ------------------------------------------------
 
   // ------------------ ROOMS ROUT ------------------
+  roomsH := universal.Word2Hash("rooms")
+  roomsURL := fmt.Sprintf("/%s", roomsH)
+
+  manageH := universal.Word2Hash("manage")
+  manageURL := fmt.Sprintf("/%s", manageH)
+
+  roomsRout := router.PathPrefix(roomsURL).Subrouter()
+  roomsRout.HandleFunc(manageURL, rooms_management)
   // ------------------------------------------------
 
   return router

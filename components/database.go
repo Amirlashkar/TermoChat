@@ -4,7 +4,6 @@ package components
 import (
 	"fmt"
 	"log"
-  "slices"
 
 	"TermoChat/config"
   "TermoChat/universal"
@@ -48,7 +47,7 @@ func (DB *Database) Migration() {
   if table != "users" {
     // Make migrations
     execSQL = `
-      CREATE TABLE users (
+      CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         show_name VARCHAR(255) NOT NULL,
         pass_hash CHAR(64) NOT NULL,
@@ -58,7 +57,7 @@ func (DB *Database) Migration() {
         is_logged BOOLEAN DEFAULT FALSE
       );
 
-      CREATE TABLE rooms (
+      CREATE TABLE IF NOT EXISTS rooms (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         creator_hash CHAR(64) NOT NULL,
@@ -132,15 +131,7 @@ func (DB *Database) SignUp(user *User) error {
   defer db.Close()
 
   _, err := DB.GetUser("", user.Hash)
-  names, _, _ := DB.ListUsers()
-  exists := slices.Contains(names, user.ShowName)
-  if exists {
-    return fmt.Errorf("Chosen name is already used")
-  }
-
   if err != nil {
-    return err
-  } else {
     execSQL := `INSERT INTO users 
             (show_name, pass_hash, related_question, related_answer, hash)
             VALUES ($1, $2, $3, $4, $5)`
@@ -151,6 +142,8 @@ func (DB *Database) SignUp(user *User) error {
     )
     log.Printf("SUCCESS: User(%s) signed up successfully", user.Hash)
     return nil
+  } else {
+    return fmt.Errorf("Chosen name is already used")
   }
 }
 
@@ -285,8 +278,7 @@ func (DB *Database) GetRoom(by string, search_word string) (*Room, error) {
     &room.Name, &room.CreatorHash, &room.Hash,
     &room.IsPublic, pq.Array(&room.Clients),
   )
-  if err != nil {
-    log.Printf("ERROR: %s", err)
+  if err != nil || room.Name == "" {
     return nil, err
   }
 
@@ -294,7 +286,7 @@ func (DB *Database) GetRoom(by string, search_word string) (*Room, error) {
 }
 
 // Creates new room
-func (DB *Database) BuildRoom(name string, creator_hash string, is_public bool) {
+func (DB *Database) BuildRoom(name string, creator_hash string, is_public bool) error {
   db := DB.DBConnect()
   defer db.Close()
 
@@ -303,29 +295,31 @@ func (DB *Database) BuildRoom(name string, creator_hash string, is_public bool) 
     "CreatorHash":  creator_hash,
   })
 
-  room := Room {
-    Name:         name,
-    CreatorHash:  creator_hash,
-    Hash:         roomHash,
-    IsPublic:     is_public,
-    Clients:      []string{creator_hash},
-  }
-
-  execSQL := `
-    INSERT INTO rooms (
-      name, creator_hash, hash, is_public, clients
-    ) VALUES (
-      $1, $2, $3, $4, $5
-    );
-  `
-
-  _, err := db.Exec(execSQL, &room.Name, &room.CreatorHash,
-                    &room.Hash, &room.IsPublic, pq.Array(&room.Clients),
-  )
+  room, err := DB.GetRoom("name", name)
   if err != nil {
-    log.Printf("ERROR: %s", err)
+    room = &Room {
+      Name:         name,
+      CreatorHash:  creator_hash,
+      Hash:         roomHash,
+      IsPublic:     is_public,
+      Clients:      []string{creator_hash},
+    }
+
+    execSQL := `
+      INSERT INTO rooms (
+        name, creator_hash, hash, is_public, clients
+      ) VALUES (
+        $1, $2, $3, $4, $5
+      );
+    `
+
+    db.Exec(execSQL, &room.Name, &room.CreatorHash,
+            &room.Hash, &room.IsPublic, pq.Array(&room.Clients),
+    )
+    log.Printf("SUCCESS: Room(%s) is built", roomHash)
+    return nil
   } else {
-    log.Printf("SUCCESS: Room(%s) built", name)
+    return err
   }
 }
 
@@ -348,6 +342,7 @@ func (DB *Database) SwitchRoomPriv(hash string) {
     execSQL := `UPDATE rooms SET is_public = true WHERE hash = $1`
     db.Exec(execSQL, hash)
   }
+  log.Printf("SUCCESS: Room(%s) privacy status changed", hash)
 }
 
 // Close room
@@ -363,6 +358,7 @@ func (DB *Database) CloseRoom(hash string) {
 
   execSQL := `DELETE FROM rooms WHERE hash = $1`
   db.Exec(execSQL, hash)
+  log.Printf("SUCCESS: Room(%s) closed", hash)
 }
 
 // Updating room
@@ -380,5 +376,5 @@ func (DB *Database) UpdateRoom(new_room *Room, hash string) {
           new_room.IsPublic, pq.Array(new_room.Clients),
           hash,)
 
-  log.Printf("SUCCESS: Room(%s) updated", new_room.Name)
+  log.Printf("SUCCESS: Room(%s) updated", hash)
 }

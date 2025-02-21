@@ -11,7 +11,7 @@ import (
 )
 
 
-func signup(w http.ResponseWriter, r *http.Request) {
+func user_signup(w http.ResponseWriter, r *http.Request) {
   showname := r.URL.Query().Get("showname")
   password := r.URL.Query().Get("password")
   related_question := r.URL.Query().Get("related_question")
@@ -27,7 +27,7 @@ func signup(w http.ResponseWriter, r *http.Request) {
   }
 }
 
-func login(w http.ResponseWriter, r *http.Request) {
+func user_login(w http.ResponseWriter, r *http.Request) {
   // Taking credentials from queries
   showname := r.URL.Query().Get("showname")
   password := r.URL.Query().Get("password")
@@ -42,7 +42,7 @@ func login(w http.ResponseWriter, r *http.Request) {
   }
 }
 
-func logout(w http.ResponseWriter, r *http.Request) {
+func user_logout(w http.ResponseWriter, r *http.Request) {
   hash := r.URL.Query().Get("hash")
 
   var db *components.Database
@@ -52,7 +52,7 @@ func logout(w http.ResponseWriter, r *http.Request) {
   }
 }
 
-func rename(w http.ResponseWriter, r *http.Request) {
+func user_rename(w http.ResponseWriter, r *http.Request) {
   hash := r.URL.Query().Get("hash")
   new_name := r.URL.Query().Get("new_name")
 
@@ -67,7 +67,7 @@ func rename(w http.ResponseWriter, r *http.Request) {
   }
 }
 
-func repass(w http.ResponseWriter, r *http.Request) {
+func user_repass(w http.ResponseWriter, r *http.Request) {
   hash := r.URL.Query().Get("hash")
   current_pass := r.URL.Query().Get("current")
   new_pass := r.URL.Query().Get("new")
