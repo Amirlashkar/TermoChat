@@ -1,5 +1,6 @@
 package components
 
+
 import (
   "fmt"
 
@@ -25,67 +26,52 @@ type RoomClient struct {
 }
 
 
-// Initialize
-func (u *User) NewUser(show_name string, password string, related_question string, related_answer string) (*User, error) {
-  pass_hash := universal.CreateHash(map[string]interface{} {
+// Initialize new user
+func (u *User) Init(show_name string, password string, related_question string, related_answer string) {
+  u.PassHash = universal.Data2Hash(map[string]interface{} {
     "Password": password,
   })
-  user_hash := universal.CreateHash(map[string]interface{}{
+  u.Hash = universal.Data2Hash(map[string]interface{}{
     "ShowName":         show_name,
-    "PassHash":         pass_hash,
+    "PassHash":         u.PassHash,
     "RelatedQuestion":  related_question,
     "RelatedAnswer":    related_answer,
   })
 
-  user := &User {
+  u = &User {
     ShowName:           show_name,
-    PassHash:           pass_hash,
+    PassHash:           u.PassHash,
     RelatedQuestion:    related_question,
     RelatedAnswer:      related_answer,
-    Hash:               user_hash,
+    Hash:               u.Hash,
     IsLogged:           false,
-  }
-
-  _, err := db.GetUser(user.ShowName)
-  if err != nil { // if user with such name doesn't exist
-    return user, nil
-  } else {
-    return nil, err
   }
 }
 
-// Rename user
-func (u *User) Rename(new_name string) {
-  u.ShowName = new_name
-  u.Hash = universal.CreateHash(map[string]interface{}{
-    "ShowName":         new_name,
+// Reinitializes to update user hash due to changed credentials
+func (u *User) ReInit() {
+  u.Hash = universal.Data2Hash(map[string]interface{} {
+    "ShowName":         u.ShowName,
     "PassHash":         u.PassHash,
     "RelatedQuestion":  u.RelatedQuestion,
     "RelatedAnswer":    u.RelatedAnswer,
   })
-  db.UpdateUser(u, u.ShowName)
 }
 
 // Changing password
 func (u *User) Repass(current_pass string, new_pass string) error {
-  current_hash := universal.CreateHash(map[string]interface{}{
+  current_hash := universal.Data2Hash(map[string]interface{}{
     "Password": current_pass,
   })
 
   if current_hash != u.PassHash {
-    return fmt.Errorf("ERROR: Current provided password is wrong")
+    return fmt.Errorf("Current provided password is wrong")
   } else {
-    u.PassHash = universal.CreateHash(map[string]interface{} {
+    u.PassHash = universal.Data2Hash(map[string]interface{} {
       "Password": new_pass,
     })
 
-    u.Hash = universal.CreateHash(map[string]interface{}{
-      "ShowName":         u.ShowName,
-      "PassHash":         u.PassHash,
-      "RelatedQuestion":  u.RelatedQuestion,
-      "RelatedAnswer":    u.RelatedAnswer,
-    })
-    db.UpdateUser(u, u.ShowName)
+    u.ReInit()
     return nil
   }
 }

@@ -7,4 +7,3 @@ import (
 
 
 var mu sync.Mutex
-var db Database

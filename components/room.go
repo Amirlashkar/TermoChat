@@ -2,7 +2,6 @@ package components
 
 
 import (
-	"sync"
   "TermoChat/universal"
 )
 
@@ -16,27 +15,28 @@ type Room struct {
 }
 
 
-// Initialize room
-func (r *Room) NewRoom(name string, creator_hash string, is_public bool) (*Room, error) {
-  hash := universal.CreateHash(map[string]interface{} {
-    "Name":       name,
-    "CreateHash": creator_hash,
+// Initialize new room
+func (r *Room) Init(name string, creator_hash string, is_public bool) {
+  r.Hash = universal.Data2Hash(map[string]interface{} {
+    "Name":         name,
+    "CreatorHash":  creator_hash,
   })
 
-  room := &Room {
+  r = &Room {
     Name:         name,
     CreatorHash:  creator_hash,
-    Hash:         hash,
+    Hash:         r.Hash,
     IsPublic:     is_public,
     Clients:      []string{creator_hash},
   }
+}
 
-  _, err := db.GetRoom(room.Name)
-  if err != nil {
-    return room, nil
-  } else {
-    return nil, err
-  }
+// Update room hash due to updated room details
+func (r *Room) ReInit() {
+  r.Hash = universal.Data2Hash(map[string]interface{} {
+    "Name":         r.Name,
+    "CreatorHash":  r.CreatorHash,
+  })
 }
 
 // Adds client to a room
@@ -45,7 +45,6 @@ func (r *Room) AddClient(client RoomClient) {
   defer mu.Unlock()
 
   r.Clients = append(r.Clients, client.UserHash)
-  db.UpdateRoom(r, r.Name)
 }
 
 // Removes a client from a room
@@ -58,5 +57,4 @@ func (r *Room) RemoveClient(client RoomClient) {
       r.Clients = append(r.Clients[:i], r.Clients[i+1:]...)
     }
   }
-  db.UpdateRoom(r, r.Name)
 }
