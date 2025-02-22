@@ -27,5 +27,25 @@ func room_close(w http.ResponseWriter, r *http.Request) {
   hash := r.URL.Query().Get("hash")
 
   var db *components.Database
-  db.CloseRoom(hash)
+  err := db.CloseRoom(hash)
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusBadRequest)
+  }
+}
+
+func room_rename(w http.ResponseWriter, r *http.Request) {
+  hash := r.URL.Query().Get("hash")
+  new_name := r.URL.Query().Get("new_name")
+
+  var db *components.Database
+  room, err := db.GetRoom("", hash)
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusBadRequest)
+  }
+  room.Name = new_name
+  room.ReInit()
+  err = db.UpdateRoom(room, hash)
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusBadRequest)
+  }
 }

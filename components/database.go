@@ -346,35 +346,42 @@ func (DB *Database) SwitchRoomPriv(hash string) {
 }
 
 // Close room
-func (DB *Database) CloseRoom(hash string) {
+func (DB *Database) CloseRoom(hash string) error {
   db := DB.DBConnect()
   defer db.Close()
 
   _, err := DB.GetRoom("", hash)
   if err != nil {
     log.Printf("ERROR: Room(%s) doesn't exist", hash)
-    return
+    return err
   }
 
   execSQL := `DELETE FROM rooms WHERE hash = $1`
   db.Exec(execSQL, hash)
   log.Printf("SUCCESS: Room(%s) closed", hash)
+  return nil
 }
 
 // Updating room
-func (DB *Database) UpdateRoom(new_room *Room, hash string) {
+func (DB *Database) UpdateRoom(new_room *Room, hash string) error {
   db := DB.DBConnect()
   defer db.Close()
 
-	execSQL := `UPDATE rooms
-              SET name = $1, creator_hash = $2, hash = $3, 
-              is_public = $4, clients = $5
-              WHERE hash = $6`
+  _, err := DB.GetRoom("", hash)
+  if err != nil {
+    return err
+  } else {
+    execSQL := `UPDATE rooms
+                SET name = $1, creator_hash = $2, hash = $3, 
+                is_public = $4, clients = $5
+                WHERE hash = $6`
 
-  db.Exec(execSQL, new_room.Name, 
-          new_room.CreatorHash, new_room.Hash, 
-          new_room.IsPublic, pq.Array(new_room.Clients),
-          hash,)
+    db.Exec(execSQL, new_room.Name, 
+            new_room.CreatorHash, new_room.Hash, 
+            new_room.IsPublic, pq.Array(new_room.Clients),
+            hash,)
 
-  log.Printf("SUCCESS: Room(%s) updated", hash)
+    log.Printf("SUCCESS: Room(%s) updated", hash)
+    return nil
+  }
 }

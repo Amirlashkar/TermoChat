@@ -77,9 +77,9 @@ func (u *User) Repass(current_pass string, new_pass string) error {
 }
 
 // Making RoomClient type from User type
-func (u *User) User2Client(user User, conn *websocket.Conn, room Room) *RoomClient {
+func (u *User) User2Client(conn *websocket.Conn, room *Room) *RoomClient {
   var client = RoomClient {
-    UserHash: user.Hash,
+    UserHash: u.Hash,
     Conn:     conn,
     RoomHash: room.Hash,
   }

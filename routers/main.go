@@ -15,6 +15,7 @@ func ProvideRouter() *mux.Router{
   // ------------------ USERS ROUT ------------------
   usersH := universal.Word2Hash("users")
   usersURL := fmt.Sprintf("/%s", usersH)
+  usersRout := router.PathPrefix(usersURL).Subrouter()
 
   signupH := universal.Word2Hash("signup")
   signupURL := fmt.Sprintf("/%s", signupH)
@@ -27,7 +28,6 @@ func ProvideRouter() *mux.Router{
   repassH := universal.Word2Hash("repass")
   repassURL := fmt.Sprintf("/%s", repassH)
 
-  usersRout := router.PathPrefix(usersURL).Subrouter()
   usersRout.HandleFunc(signupURL, user_signup).Methods("GET")
   usersRout.HandleFunc(loginURL, user_login).Methods("GET")
   usersRout.HandleFunc(logoutURL, user_logout).Methods("GET")
@@ -38,12 +38,22 @@ func ProvideRouter() *mux.Router{
   // ------------------ ROOMS ROUT ------------------
   roomsH := universal.Word2Hash("rooms")
   roomsURL := fmt.Sprintf("/%s", roomsH)
+  roomsRout := router.PathPrefix(roomsURL).Subrouter()
 
+  // ------------------ WEBSOCKET ------------------
   manageH := universal.Word2Hash("manage")
   manageURL := fmt.Sprintf("/%s", manageH)
 
-  roomsRout := router.PathPrefix(roomsURL).Subrouter()
   roomsRout.HandleFunc(manageURL, rooms_management)
+  // ------------------------------------------------
+  buildH := universal.Word2Hash("build")
+  buildURL := fmt.Sprintf("/%s", buildH)
+  closeH := universal.Word2Hash("close")
+  closeURL := fmt.Sprintf("/%s", closeH)
+
+  roomsRout.HandleFunc(buildURL, room_build).Methods("GET")
+  roomsRout.HandleFunc(closeURL, room_close).Methods("GET")
+  roomsRout.HandleFunc(renameURL, room_rename).Methods("GET")
   // ------------------------------------------------
 
   return router

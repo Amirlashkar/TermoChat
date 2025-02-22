@@ -47,7 +47,7 @@ func (r *Room) ReInit() {
 }
 
 // Adds client to a room
-func (r *Room) AddClient(client RoomClient) {
+func (r *Room) AddClient(client *RoomClient) {
   mu.Lock()
   defer mu.Unlock()
 
@@ -55,7 +55,7 @@ func (r *Room) AddClient(client RoomClient) {
 }
 
 // Removes a client from a room
-func (r *Room) RemoveClient(client RoomClient) {
+func (r *Room) RemoveClient(client *RoomClient) {
   mu.Lock()
   defer mu.Unlock()
 
