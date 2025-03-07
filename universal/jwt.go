@@ -44,15 +44,17 @@ func GenerateJWT(hash string, duration time.Duration) *TokenResponse {
     return &response
 }
 
-func IsTokenValid(tokenString string) (bool, error) {
-    // Parser deals with expired, unsigned jwt tokens itself
-    token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+func parseToken(tokenString string) (*jwt.Token, error) {
+    return jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
         if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
             return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
         }
         return jwtKey, nil
     })
+}
 
+func IsTokenValid(tokenString string) (bool, error) {
+    token, err := parseToken(tokenString)
     if err != nil {
         return false, fmt.Errorf("token parsing error: %v", err)
     }
@@ -63,3 +65,11 @@ func IsTokenValid(tokenString string) (bool, error) {
 
     return false, fmt.Errorf("token is invalid")
 }
+
+func GetUHash(tokenString string) string {
+    // No error cause this function  is called when the validations
+    // are already checked by top function
+    token, _ := parseToken(tokenString)
+    return token.Claims.(*Claims).Hash
+}
+

@@ -2,6 +2,7 @@ package routers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -10,94 +11,86 @@ import (
 )
 
 func user_signup(w http.ResponseWriter, r *http.Request) {
-	showname := r.URL.Query().Get("showname")
-	password := r.URL.Query().Get("password")
-	related_question := r.URL.Query().Get("related_question")
-	related_answer := r.URL.Query().Get("related_answer")
+    showname         := r.FormValue("showname")
+    password         := r.FormValue("password")
+    related_question := r.FormValue("related_question")
+    related_answer   := r.FormValue("related_answer")
 
 	var user *components.User
 	user.Init(showname, password, related_question, related_answer)
 
 	var db *components.Database
-	err := db.SignUp(user)
+    err := db.SignUp(user)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-	}
+        writeJsonResp(w, http.StatusBadRequest, "", err)
+	} else {
+        message := fmt.Sprintf("User %s signed up successfully", user.Hash)
+        writeJsonResp(w, http.StatusAccepted, message, nil)
+    }
 }
 
 func user_login(w http.ResponseWriter, r *http.Request) {
-	// Taking credentials from queries
-	showname := r.URL.Query().Get("showname")
-	password := r.URL.Query().Get("password")
+    showname         := r.FormValue("showname")
+    password         := r.FormValue("password")
 
 	var db *components.Database
 	user, err := db.LogIn(showname, password)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+        writeJsonResp(w, http.StatusBadRequest, "", err)
 	} else {
-		token := universal.GenerateJWT(user.Hash, 1*time.Hour)
-		json.NewEncoder(w).Encode(&token)
+		token_resp := universal.GenerateJWT(user.Hash, 1*time.Hour)
+        w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(&token_resp)
 	}
 }
 
 func user_logout(w http.ResponseWriter, r *http.Request) {
-	is_valid, token_err := CheckToken(r)
-	if !is_valid {
-		http.Error(w, token_err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	hash := r.URL.Query().Get("hash")
+    hash := r.FormValue("hash")
 
 	var db *components.Database
     err := db.LogOut(hash)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-	}
+        writeJsonResp(w, http.StatusBadRequest, "", err)
+	} else {
+        message := fmt.Sprintf("User %s logged out", hash)
+        writeJsonResp(w, http.StatusOK, message, nil)
+    }
 }
 
 func user_rename(w http.ResponseWriter, r *http.Request) {
-    is_valid, token_err := CheckToken(r)
-    if !is_valid {
-        http.Error(w, token_err.Error(), http.StatusBadRequest)
-        return
-    }
-
-    hash := r.URL.Query().Get("hash")
-    new_name := r.URL.Query().Get("new_name")
+    hash     := r.FormValue("hash")
+    new_name := r.FormValue("new_name")
 
     var db *components.Database
     user, err := db.GetUser("", hash)
     if err != nil {
-        http.Error(w, err.Error(), http.StatusBadRequest)
+        writeJsonResp(w, http.StatusBadRequest, "", err)
     } else {
         user.ShowName = new_name
         user.ReInit()
         db.UpdateUser(user, hash)
+        message := fmt.Sprintf("User %s renamed ; NewHash: %s", hash, user.Hash)
+        writeJsonResp(w, http.StatusOK, message, nil)
     }
 }
 
 func user_repass(w http.ResponseWriter, r *http.Request) {
-	is_valid, token_err := CheckToken(r)
-	if !is_valid {
-		http.Error(w, token_err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	hash := r.URL.Query().Get("hash")
-	current_pass := r.URL.Query().Get("current")
-	new_pass := r.URL.Query().Get("new")
+    hash         := r.FormValue("hash")
+    current_pass := r.FormValue("current_pass")
+    new_pass     := r.FormValue("new_pass")
 
 	var db *components.Database
 	user, err := db.GetUser("", hash)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+        writeJsonResp(w, http.StatusBadRequest, "", err)
 	} else {
 		err := user.Repass(current_pass, new_pass)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+            writeJsonResp(w, http.StatusUnauthorized, "", err)
 		} else {
 			db.UpdateUser(user, hash)
+            message := fmt.Sprintf("User %s password changed", user.Hash)
+            writeJsonResp(w, http.StatusOK, message, nil)
 		}
 	}
 }
