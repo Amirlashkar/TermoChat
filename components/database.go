@@ -132,7 +132,7 @@ func (DB *Database) SignUp(user *User) error {
 
   _, err := DB.GetUser("", user.Hash)
   if err != nil {
-    execSQL := `INSERT INTO users 
+    execSQL := `INSERT INTO users
             (show_name, pass_hash, related_question, related_answer, hash)
             VALUES ($1, $2, $3, $4, $5)`
 
@@ -155,12 +155,12 @@ func (DB *Database) UpdateUser(new_user *User, hash string) error {
   _, err := DB.GetUser("", hash)
   if err != nil {
     execSQL := `UPDATE users
-                SET show_name = $1, pass_hash = $2, related_question = $3, 
+                SET show_name = $1, pass_hash = $2, related_question = $3,
                 related_answer = $4, hash = $5, is_logged = $6
                 WHERE show_name = $7`
 
-    db.Exec(execSQL, new_user.ShowName, 
-            new_user.PassHash, new_user.RelatedQuestion, 
+    db.Exec(execSQL, new_user.ShowName,
+            new_user.PassHash, new_user.RelatedQuestion,
             new_user.RelatedAnswer, new_user.Hash, new_user.IsLogged, new_user.ShowName)
 
     return nil
@@ -199,7 +199,7 @@ func (DB *Database) LogOut(hash string) error {
   user, err := DB.GetUser("", hash)
   if err != nil {
     return err
-  } else if user.IsLogged != false {
+  } else if user.IsLogged == false {
     return fmt.Errorf("Log in first")
   } else {
     user.IsLogged = false
@@ -263,7 +263,7 @@ func (DB *Database) GetRoom(by string, search_word string) (*Room, error) {
   defer db.Close()
 
   execSQL := `
-    SELECT name, creator_hash, hash, is_public, clients FROM rooms WHERE 
+    SELECT name, creator_hash, hash, is_public, clients FROM rooms WHERE
   `
 
   if by == "name" {
@@ -372,12 +372,12 @@ func (DB *Database) UpdateRoom(new_room *Room, hash string) error {
     return err
   } else {
     execSQL := `UPDATE rooms
-                SET name = $1, creator_hash = $2, hash = $3, 
+                SET name = $1, creator_hash = $2, hash = $3,
                 is_public = $4, clients = $5
                 WHERE hash = $6`
 
-    db.Exec(execSQL, new_room.Name, 
-            new_room.CreatorHash, new_room.Hash, 
+    db.Exec(execSQL, new_room.Name,
+            new_room.CreatorHash, new_room.Hash,
             new_room.IsPublic, pq.Array(new_room.Clients),
             hash,)
 
