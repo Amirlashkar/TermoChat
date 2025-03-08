@@ -12,7 +12,7 @@ import (
 
 
 // Creating hash using secret key and data
-func Data2Hash(data map[string]interface{}) string {
+func Data2Hash(data map[string]any) string {
   data["SECRET"] = secretKey
   jsonBytes, _ := json.Marshal(data)
   hash := sha256.Sum256(jsonBytes)
@@ -22,7 +22,7 @@ func Data2Hash(data map[string]interface{}) string {
 // To create hash from one word
 func Word2Hash(word string) string {
 
-  data := map[string]interface{} {
+  data := map[string]any {
     "WORD": word,
     "SECRET": secretKey,
   }

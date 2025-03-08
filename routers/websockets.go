@@ -27,7 +27,7 @@ func broadcast(room_hash string, message []byte, db *components.Database) {
       room_struct, _ := db.GetRoom("", room_hash)
 
       room_struct.RemoveClient(room[client])
-      db.UpdateRoom(room_struct, room_hash)
+      db.UpdateRoom(room_struct.CreatorHash, room_struct, room_hash)
       delete(room, client)
     }
   }
@@ -60,7 +60,7 @@ func rooms_management(w http.ResponseWriter, r *http.Request) {
   defer mu.Unlock()
 
   room.AddClient(client)
-  db.UpdateRoom(room, room.Hash)
+  db.UpdateRoom(room.CreatorHash, room, room.Hash)
   log.Printf("SUCCESS: User(%s) joined room(%s)", user.Hash, room.Hash)
 
   rooms[room.Hash][client.UserHash] = client
@@ -70,7 +70,7 @@ func rooms_management(w http.ResponseWriter, r *http.Request) {
     if err != nil {
       log.Printf("SUCCESS: User(%s) left room(%s)", user.Hash, room.Hash)
       room.RemoveClient(client)
-      db.UpdateRoom(room, room.Hash)
+      db.UpdateRoom(room.CreatorHash, room, room.Hash)
     } else {
       broadcast(room.Hash, message, db)
     }

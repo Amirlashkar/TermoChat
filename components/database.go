@@ -2,23 +2,28 @@ package components
 
 
 import (
-	"fmt"
-	"log"
+    "fmt"
+    "log"
 
-	"TermoChat/config"
-  "TermoChat/universal"
+    "TermoChat/config"
+    "TermoChat/universal"
 
-	"database/sql"
-	"github.com/lib/pq"
-	_ "github.com/lib/pq"
+    "database/sql"
+    "github.com/lib/pq"
+    _ "github.com/lib/pq"
 )
 
 
 // Database instance
 type Database struct {}
 
+func (DB *Database) ServerAdmin_() string {
+    env := config.LoadEnv()
+    return env.SERVER_ADMIN
+}
+
 // Simple db connection function
-func (DB *Database) DBConnect() *sql.DB{
+func (DB *Database) DBConnect() *sql.DB {
   env := config.LoadEnv()
   connStr := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", env.DB_USER, env.DB_PASS, env.DB_NAME)
   db, err := sql.Open("postgres", connStr)
@@ -73,26 +78,29 @@ func (DB *Database) Migration() {
 
 // Searching for a user
 func (DB *Database) GetUser(by string, search_word string) (*User, error) {
-  db := DB.DBConnect()
-  defer db.Close()
+    db := DB.DBConnect()
+    defer db.Close()
 
-  execSQL := `SELECT show_name, pass_hash, related_question, related_answer, hash, is_logged
-              FROM users WHERE `
+    execSQL := `SELECT show_name, pass_hash, related_question, related_answer, hash, is_logged
+    FROM users WHERE `
 
-  if by == "show_name" {
-    execSQL += "show_name = $1;"
-  } else {
-    execSQL += "hash = $1;"
-  }
+    if by == "show_name" {
+        execSQL += "show_name = $1;"
+    } else if by == "pass_hash"{
+        execSQL += "pass_hash = $1;"
+    } else {
+        execSQL += "hash = $1;"
+    }
 
-  row := db.QueryRow(execSQL, search_word)
+    row := db.QueryRow(execSQL, search_word)
 
-  var user User
-  err := row.Scan(&user.ShowName, &user.PassHash, &user.RelatedQuestion, &user.RelatedAnswer, &user.Hash, &user.IsLogged)
-	if err != nil || user.Hash == "" {
-    return nil, fmt.Errorf("No such user")
-	}
-  return &user, nil
+    var user User
+    err := row.Scan(&user.ShowName, &user.PassHash, &user.RelatedQuestion, &user.RelatedAnswer, &user.Hash, &user.IsLogged)
+    if err != nil || user.Hash == "" {
+        return nil, fmt.Errorf("No such user")
+    } else {
+        return &user, nil
+    }
 }
 
 // List Users
@@ -127,24 +135,32 @@ func (DB *Database) ListUsers() ([]string, []string, error) {
 
 // Adding one user to database
 func (DB *Database) SignUp(user *User) error {
-  db := DB.DBConnect()
-  defer db.Close()
+    db := DB.DBConnect()
+    defer db.Close()
 
-  _, err := DB.GetUser("", user.Hash)
-  if err != nil {
-    execSQL := `INSERT INTO users
-            (show_name, pass_hash, related_question, related_answer, hash)
-            VALUES ($1, $2, $3, $4, $5)`
+    // Checking that database doesn't save repeatative data
+    name_existance, _ := DB.GetUser("show_name", user.ShowName)
+    pass_existance, _ := DB.GetUser("pass_hash", user.PassHash)
+    hash_existance, _ := DB.GetUser("", user.Hash)
 
-    db.Exec(execSQL, user.ShowName,
+    if name_existance == nil && pass_existance == nil && hash_existance == nil{
+        execSQL := `INSERT INTO users
+        (show_name, pass_hash, related_question, related_answer, hash)
+        VALUES ($1, $2, $3, $4, $5)`
+
+        db.Exec(execSQL, user.ShowName,
             user.PassHash, user.RelatedQuestion,
             user.RelatedAnswer, user.Hash,
-    )
-    log.Printf("SUCCESS: User(%s) signed up successfully", user.Hash)
-    return nil
-  } else {
-    return fmt.Errorf("Chosen name is already used")
-  }
+            )
+        log.Printf("SUCCESS: User(%s) signed up successfully", user.Hash)
+        return nil
+    } else if name_existance != nil {
+        return fmt.Errorf("Chosen name is already used")
+    } else if pass_existance != nil {
+        return fmt.Errorf("Chosen password is already used")
+    } else {
+        return fmt.Errorf("Chosen credential is already used")
+    }
 }
 
 // Updating user on database
@@ -171,7 +187,7 @@ func (DB *Database) UpdateUser(new_user *User, hash string) error {
 
 // User activation
 func (DB *Database) LogIn(show_name string, password string) (*User, error){
-  PassHash := universal.Data2Hash(map[string]interface{} {
+  PassHash := universal.Data2Hash(map[string]any {
     "Password": password,
   })
 
@@ -232,7 +248,7 @@ func (DB *Database) ListRooms() ([]string, []string, error) {
   defer db.Close()
 
   execSQL := `
-    SELECT name, hash FROM rooms
+    SELECT name, hash FROM rooms WHERE is_public = 'true';
   `
 
   rows, err := db.Query(execSQL)
@@ -290,7 +306,7 @@ func (DB *Database) BuildRoom(name string, creator_hash string, is_public bool) 
   db := DB.DBConnect()
   defer db.Close()
 
-  roomHash := universal.Data2Hash(map[string]interface{} {
+  roomHash := universal.Data2Hash(map[string]any{
     "Name":         name,
     "CreatorHash":  creator_hash,
   })
@@ -346,42 +362,51 @@ func (DB *Database) SwitchRoomPriv(hash string) {
 }
 
 // Close room
-func (DB *Database) CloseRoom(hash string) error {
-  db := DB.DBConnect()
-  defer db.Close()
+func (DB *Database) CloseRoom(req_hash string, hash string) error {
+    db := DB.DBConnect()
+    defer db.Close()
 
-  _, err := DB.GetRoom("", hash)
-  if err != nil {
-    log.Printf("ERROR: Room(%s) doesn't exist", hash)
-    return err
-  }
+    room, err := DB.GetRoom("", hash)
+    if err != nil {
+        return err
+    }
 
-  execSQL := `DELETE FROM rooms WHERE hash = $1`
-  db.Exec(execSQL, hash)
-  log.Printf("SUCCESS: Room(%s) closed", hash)
-  return nil
+    if room.CreatorHash == req_hash {
+        execSQL := `DELETE FROM rooms WHERE hash = $1`
+        db.Exec(execSQL, hash)
+        log.Printf("SUCCESS: Room(%s) closed", hash)
+        return nil
+    } else {
+        return fmt.Errorf("You don't have rights to close this room")
+    }
 }
 
 // Updating room
-func (DB *Database) UpdateRoom(new_room *Room, hash string) error {
-  db := DB.DBConnect()
-  defer db.Close()
+func (DB *Database) UpdateRoom(req_hash string, new_room *Room, hash string) error {
+    db := DB.DBConnect()
+    defer db.Close()
 
-  _, err := DB.GetRoom("", hash)
-  if err != nil {
-    return err
-  } else {
-    execSQL := `UPDATE rooms
-                SET name = $1, creator_hash = $2, hash = $3,
-                is_public = $4, clients = $5
-                WHERE hash = $6`
+    room, err := DB.GetRoom("", hash)
+    if err != nil {
+        return err
+    } else {
+        admin := DB.ServerAdmin_()
+        if req_hash == room.CreatorHash || req_hash == admin {
+            execSQL := `UPDATE rooms
+            SET name = $1, creator_hash = $2, hash = $3,
+            is_public = $4, clients = $5
+            WHERE hash = $6`
 
-    db.Exec(execSQL, new_room.Name,
-            new_room.CreatorHash, new_room.Hash,
-            new_room.IsPublic, pq.Array(new_room.Clients),
-            hash,)
+            db.Exec(execSQL, new_room.Name,
+                new_room.CreatorHash, new_room.Hash,
+                new_room.IsPublic, pq.Array(new_room.Clients),
+                hash,
+                )
 
-    log.Printf("SUCCESS: Room(%s) updated", hash)
-    return nil
-  }
+            log.Printf("SUCCESS: Room(%s) updated", hash)
+            return nil
+        } else {
+            return fmt.Errorf("You don't have rights to change this room")
+        }
+    }
 }

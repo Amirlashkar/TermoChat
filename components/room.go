@@ -19,7 +19,7 @@ type Room struct {
 
 // Initialize new room
 func (r *Room) Init(name string, creator_hash string, is_public_str string) {
-  r.Hash = universal.Data2Hash(map[string]interface{} {
+  r.Hash = universal.Data2Hash(map[string]any{
     "Name":         name,
     "CreatorHash":  creator_hash,
   })
@@ -40,7 +40,7 @@ func (r *Room) Init(name string, creator_hash string, is_public_str string) {
 
 // Update room hash due to updated room details
 func (r *Room) ReInit() {
-  r.Hash = universal.Data2Hash(map[string]interface{} {
+  r.Hash = universal.Data2Hash(map[string]any{
     "Name":         r.Name,
     "CreatorHash":  r.CreatorHash,
   })

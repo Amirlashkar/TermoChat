@@ -45,7 +45,7 @@ func GenerateJWT(hash string, duration time.Duration) *TokenResponse {
 }
 
 func parseToken(tokenString string) (*jwt.Token, error) {
-    return jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+    return jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (any, error) {
         if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
             return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
         }
@@ -53,17 +53,21 @@ func parseToken(tokenString string) (*jwt.Token, error) {
     })
 }
 
-func IsTokenValid(tokenString string) (bool, error) {
+// Checks a JWT token validity due to its expiration date & signature ;
+// Also gives back the related user hash
+func IsTokenValid(tokenString string) (bool, error, *string) {
     token, err := parseToken(tokenString)
     if err != nil {
-        return false, fmt.Errorf("token parsing error: %v", err)
+        return false, fmt.Errorf("token parsing error: %v", err), nil
     }
+
+    hash := token.Claims.(*Claims).Hash
 
     if token.Valid {
-        return true, nil
+        return true, nil, &hash // we used pointer here to handle nil values returning
     }
 
-    return false, fmt.Errorf("token is invalid")
+    return false, fmt.Errorf("token is invalid"), nil
 }
 
 func GetUHash(tokenString string) string {

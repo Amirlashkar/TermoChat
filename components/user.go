@@ -28,29 +28,25 @@ type RoomClient struct {
 
 // Initialize new user
 func (u *User) Init(show_name string, password string, related_question string, related_answer string) {
-  u.PassHash = universal.Data2Hash(map[string]interface{} {
-    "Password": password,
-  })
-  u.Hash = universal.Data2Hash(map[string]interface{}{
-    "ShowName":         show_name,
-    "PassHash":         u.PassHash,
-    "RelatedQuestion":  related_question,
-    "RelatedAnswer":    related_answer,
-  })
+    u.PassHash = universal.Data2Hash(map[string]any {
+        "Password": password,
+    })
+    u.Hash = universal.Data2Hash(map[string]any{
+        "ShowName":         show_name,
+        "PassHash":         u.PassHash,
+        "RelatedQuestion":  related_question,
+        "RelatedAnswer":    related_answer,
+    })
 
-  u = &User {
-    ShowName:           show_name,
-    PassHash:           u.PassHash,
-    RelatedQuestion:    related_question,
-    RelatedAnswer:      related_answer,
-    Hash:               u.Hash,
-    IsLogged:           false,
-  }
+    u.ShowName         = show_name
+    u.RelatedQuestion  = related_question
+    u.RelatedAnswer    = related_answer
+    u.IsLogged         = false
 }
 
 // Reinitializes to update user hash due to changed credentials
 func (u *User) ReInit() {
-  u.Hash = universal.Data2Hash(map[string]interface{} {
+  u.Hash = universal.Data2Hash(map[string]any {
     "ShowName":         u.ShowName,
     "PassHash":         u.PassHash,
     "RelatedQuestion":  u.RelatedQuestion,
@@ -60,18 +56,18 @@ func (u *User) ReInit() {
 
 // Changing password
 func (u *User) Repass(current_pass string, new_pass string) error {
-  current_hash := universal.Data2Hash(map[string]interface{}{
+  current_hash := universal.Data2Hash(map[string]any {
     "Password": current_pass,
   })
 
   if current_hash != u.PassHash {
     return fmt.Errorf("Current provided password is wrong")
   } else {
-    u.PassHash = universal.Data2Hash(map[string]interface{} {
+    u.PassHash = universal.Data2Hash(map[string]any {
       "Password": new_pass,
     })
 
-    u.ReInit()
+    // u.ReInit() // If this happens then we're up to change token per put requests
     return nil
   }
 }
