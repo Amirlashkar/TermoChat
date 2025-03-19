@@ -1,7 +1,6 @@
 package routers
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -20,11 +19,11 @@ func room_build(w http.ResponseWriter, r *http.Request) {
     var db *components.Database
     err := db.BuildRoom(name, creator_hash, room.IsPublic)
     if err != nil {
-        writeJsonResp(w, http.StatusOK, "", err.Error())
+		jsonResp(w, "", err.Error(), "error", http.StatusBadRequest, map[string]any{})
         return
     }
-    message := fmt.Sprintf("Room %s built", room.Hash)
-    writeJsonResp(w, http.StatusCreated, message, "")
+    message := fmt.Sprintf("Room %s built", room.Name)
+    jsonResp(w, message, "", "ok", http.StatusOK, map[string]any{})
 }
 
 func room_close(w http.ResponseWriter, r *http.Request) {
@@ -34,22 +33,22 @@ func room_close(w http.ResponseWriter, r *http.Request) {
     var db *components.Database
     err := db.CloseRoom(user_hash, hash)
     if err != nil {
-        writeJsonResp(w, http.StatusOK, "", err.Error())
+		jsonResp(w, "", err.Error(), "error", http.StatusBadRequest, map[string]any{})
         return
     }
     message := fmt.Sprintf("Room %s deleted", hash)
-    writeJsonResp(w, http.StatusOK, message, "")
+    jsonResp(w, message, "", "ok", http.StatusOK, map[string]any{})
 }
 
 func room_rename(w http.ResponseWriter, r *http.Request) {
     user_hash     := r.FormValue("thash")
-    hash     := r.FormValue("hash")
-    new_name := r.FormValue("new_name")
+    hash          := r.FormValue("hash")
+    new_name      := r.FormValue("new_name")
 
     var db *components.Database
     room, err := db.GetRoom("", hash)
     if err != nil {
-        writeJsonResp(w, http.StatusBadRequest, "", err.Error())
+        jsonResp(w, "", err.Error(), "error", http.StatusBadRequest, map[string]any{})
         return
     }
 
@@ -57,24 +56,24 @@ func room_rename(w http.ResponseWriter, r *http.Request) {
     room.ReInit() // to update room hash
     err = db.UpdateRoom(user_hash, room, hash)
     if err != nil {
-        writeJsonResp(w, http.StatusBadRequest, "", err.Error())
+        jsonResp(w, "", err.Error(), "error", http.StatusBadRequest, map[string]any{})
         return
     }
-    message := fmt.Sprintf("Room %s renamed", hash)
-    writeJsonResp(w, http.StatusOK, message, "")
+    message := fmt.Sprintf("Room %s renamed", room.Name)
+    jsonResp(w, message, "", "ok", http.StatusOK, map[string]any{})
 }
 
 func pub_list(w http.ResponseWriter, r *http.Request) {
     var db *components.Database
     names, hashes, err:= db.ListRooms()
     if err != nil {
-        writeJsonResp(w, http.StatusBadRequest, "", err.Error())
+        jsonResp(w, "", err.Error(), "error", http.StatusBadRequest, map[string]any{})
         return
     }
 
-    rlist := RoomsList {
-        Names:  names,
-        Hashes: hashes,
+    data := map[string]any {
+        "names":  names,
+        "hashes": hashes,
     }
-    json.NewEncoder(w).Encode(rlist)
+    jsonResp(w, "", "", "ok", http.StatusOK, data)
 }

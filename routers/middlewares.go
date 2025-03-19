@@ -5,27 +5,26 @@ import (
 	"net/http"
 	"net/url"
 
-    "TermoChat/components"
+	"TermoChat/components"
 )
-
 
 // Checks token validity & saves it on format
 func tokenMiddleWare(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        var db *components.Database
+
         is_valid, _, hash := checkToken(r)
 
         if !is_valid {
             w.Header().Set("Content-Type", "application/json")
-            w.WriteHeader(http.StatusUnauthorized)
-            json.NewEncoder(w).Encode(&map[string]string{"error": "Unauthorized token"})
+            jsonResp(w, "", "Unauthorized token ; login again", "error", http.StatusUnauthorized, map[string]any{})
             return
         }
 
-        // Check if the user is logged in
-        var db *components.Database
         user, _ := db.GetUser("", *hash)
-        if user.IsLogged == false {
-            writeJsonResp(w, http.StatusUnauthorized, "", "Log in first")
+        // Check if the user is logged in
+        if !user.IsLogged {
+            jsonResp(w, "", "Log in first", "error", http.StatusBadRequest, map[string]any{})
             return
         }
 
@@ -43,9 +42,7 @@ func tokenMiddleWare(next http.Handler) http.Handler {
 func formMiddleWare(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         if r.Header.Get("Content-Type") != "application/json" {
-            response := responseBuilder("", "Please enter data as right Content-Type")
-            w.WriteHeader(http.StatusBadRequest)
-            json.NewEncoder(w).Encode(&response)
+            jsonResp(w, "", "Please enter data as right Content-Type", "error", http.StatusBadRequest, map[string]any{})
             return
         }
 
@@ -53,9 +50,7 @@ func formMiddleWare(next http.Handler) http.Handler {
         err := json.NewDecoder(r.Body).Decode(&formData)
         if len(formData) != 0 {
             if err != nil {
-                response := responseBuilder("", err.Error())
-                w.WriteHeader(http.StatusBadRequest)
-                json.NewEncoder(w).Encode(&response)
+                jsonResp(w, "", err.Error(), "error", http.StatusBadRequest, map[string]any{})
                 return
             }
 

@@ -1,10 +1,10 @@
 package routers
 
 import (
-	"sync"
-	"strings"
+	"encoding/json"
 	"net/http"
-    "encoding/json"
+	"strings"
+	"sync"
 
 	"TermoChat/components"
 	"TermoChat/universal"
@@ -19,11 +19,6 @@ type RoomsList struct {
     Hashes    []string `json:"hashes"`
 }
 
-type response struct {
-    Message   string   `json:"message"`
-    Error     string   `json:"error,omitempty"`
-}
-
 func checkToken(r *http.Request) (bool, error, *string) {
     token := r.Header.Get("Authorization")
     token = strings.TrimPrefix(token, "Bearer ")
@@ -31,16 +26,40 @@ func checkToken(r *http.Request) (bool, error, *string) {
     return universal.IsTokenValid(token)
 }
 
-func responseBuilder(message string, err string) *response {
+type response struct {
+    Message   string           `json:"message,omitempty"`
+    Error     string           `json:"error,omitempty"`
+    Status    string           `json:"status"`
+    Code      int              `json:"code"`
+    Data      map[string]any   `json:"data,omitempty"`
+}
+
+func responseBuilder(message string, err string, status string,
+                     code int, data map[string]any) *response {
     return &response {
         Message: message,
         Error:   err,
+        Status:  status,
+        Code:    code,
+        Data:    data,
     }
 }
 
-func writeJsonResp(w http.ResponseWriter, status_code int, message string, err string) {
-        w.WriteHeader(status_code)
+func jsonResp(w http.ResponseWriter, message string, err string, status string, code int, data map[string]any) {
+        w.WriteHeader(code)
         json.NewEncoder(w).Encode(
-            responseBuilder(message, err),
+            responseBuilder(message, err, status, code, data),
         )
+}
+
+func addClient2Room(room_hash string, client *components.RoomClient) {
+    if rooms == nil {
+        rooms = make(map[string]map[string]*components.RoomClient)
+    }
+
+    if rooms[room_hash] == nil {
+        rooms[room_hash] = make(map[string]*components.RoomClient)
+    }
+
+    rooms[room_hash][client.UserHash] = client
 }

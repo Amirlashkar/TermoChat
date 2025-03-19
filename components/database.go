@@ -24,35 +24,35 @@ func (DB *Database) ServerAdmin_() string {
 
 // Simple db connection function
 func (DB *Database) DBConnect() *sql.DB {
-  env := config.LoadEnv()
-  connStr := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", env.DB_USER, env.DB_PASS, env.DB_NAME)
-  db, err := sql.Open("postgres", connStr)
-  if err != nil {
-    log.Fatal(err)
-  }
-  return db
+    env := config.LoadEnv()
+    connStr := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", env.DB_USER, env.DB_PASS, env.DB_NAME)
+    db, err := sql.Open("postgres", connStr)
+    if err != nil {
+        log.Fatal(err)
+    }
+    return db
 }
 
 // Database migration
 func (DB *Database) Migration() {
-  db := DB.DBConnect()
-  defer db.Close()
+    db := DB.DBConnect()
+    defer db.Close()
 
-  // Check if wanted tables exist
-  execSQL := `SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = $1`
+    // Check if wanted tables exist
+    execSQL := `SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = $1`
 
-  row := db.QueryRow(execSQL, "users")
-  var table string
-  err := row.Scan(&table)
-  log.Println(table)
-  if err != nil {
-    log.Println(err)
-  }
+    row := db.QueryRow(execSQL, "users")
+    var table string
+    err := row.Scan(&table)
+    log.Println(table)
+    if err != nil {
+        log.Println(err)
+    }
 
-  if table != "users" {
-    // Make migrations
-    execSQL = `
-      CREATE TABLE IF NOT EXISTS users (
+    if table != "users" {
+        // Make migrations
+        execSQL = `
+        CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         show_name VARCHAR(255) NOT NULL,
         pass_hash CHAR(64) NOT NULL,
@@ -60,20 +60,20 @@ func (DB *Database) Migration() {
         related_answer TEXT NOT NULL,
         hash CHAR(64) NOT NULL,
         is_logged BOOLEAN DEFAULT FALSE
-      );
+        );
 
-      CREATE TABLE IF NOT EXISTS rooms (
+        CREATE TABLE IF NOT EXISTS rooms (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         creator_hash CHAR(64) NOT NULL,
         hash CHAR(64) NOT NULL,
         is_public BOOLEAN DEFAULT TRUE,
         clients CHAR(64)[]
-      );`
+        );`
 
-    db.Exec(execSQL)
-    log.Println("SUCCESS: New tables migrated successfully")
-  }
+        db.Exec(execSQL)
+        log.Println("SUCCESS: New tables migrated successfully")
+    }
 }
 
 // Searching for a user
@@ -165,200 +165,201 @@ func (DB *Database) SignUp(user *User) error {
 
 // Updating user on database
 func (DB *Database) UpdateUser(new_user *User, hash string) error {
-  db := DB.DBConnect()
-  defer db.Close()
+    db := DB.DBConnect()
+    defer db.Close()
 
-  _, err := DB.GetUser("", hash)
-  if err != nil {
-    execSQL := `UPDATE users
-                SET show_name = $1, pass_hash = $2, related_question = $3,
-                related_answer = $4, hash = $5, is_logged = $6
-                WHERE show_name = $7`
+    _, err := DB.GetUser("", hash)
+    if err != nil {
+        execSQL := `UPDATE users
+        SET show_name = $1, pass_hash = $2, related_question = $3,
+        related_answer = $4, hash = $5, is_logged = $6
+        WHERE show_name = $7`
 
-    db.Exec(execSQL, new_user.ShowName,
+        db.Exec(execSQL, new_user.ShowName,
             new_user.PassHash, new_user.RelatedQuestion,
             new_user.RelatedAnswer, new_user.Hash, new_user.IsLogged, new_user.ShowName)
 
-    return nil
-  } else {
-    return err
-  }
+        return nil
+    } else {
+        return err
+    }
 }
 
 // User activation
 func (DB *Database) LogIn(show_name string, password string) (*User, error){
-  PassHash := universal.Data2Hash(map[string]any {
-    "Password": password,
-  })
+    PassHash := universal.Data2Hash(map[string]any {
+        "Password": password,
+    })
 
-  user, err := DB.GetUser("show_name", show_name)
-  if err != nil {
-    return nil, err
-  } else {
-    if PassHash != user.PassHash {
-      return nil, fmt.Errorf("Wrong password")
+    user, err := DB.GetUser("show_name", show_name)
+    if err != nil {
+        return nil, err
     } else {
-      if user.IsLogged {
-        return user, fmt.Errorf("User already logged in")
-      } else {
-        user.IsLogged = true
-        DB.UpdateUser(user, user.ShowName)
-        log.Printf("SUCCESS: User(%s) logged in", user.Hash)
-        return user, nil
-      }
+        if PassHash != user.PassHash {
+            return nil, fmt.Errorf("Wrong password")
+        } else {
+            if user.IsLogged {
+                log.Printf("User (%s) is already logged in", user.Hash)
+                return user, nil
+            } else {
+                user.IsLogged = true
+                DB.UpdateUser(user, user.ShowName)
+                log.Printf("SUCCESS: User(%s) logged in", user.Hash)
+                return user, nil
+            }
+        }
     }
-  }
 }
 
 // User deactivation
 func (DB *Database) LogOut(hash string) error {
-  user, err := DB.GetUser("", hash)
-  if err != nil {
-    return err
-  } else if user.IsLogged == false {
-    return fmt.Errorf("Log in first")
-  } else {
-    user.IsLogged = false
-    DB.UpdateUser(user, user.ShowName)
-    log.Printf("SUCCESS: User(%s) logged out", hash)
-    return nil
-  }
+    user, err := DB.GetUser("", hash)
+    if err != nil {
+        return err
+    } else if user.IsLogged == false {
+        return fmt.Errorf("Log in first")
+    } else {
+        user.IsLogged = false
+        DB.UpdateUser(user, user.ShowName)
+        log.Printf("SUCCESS: User(%s) logged out", hash)
+        return nil
+    }
 }
 
 // Delete a user data
 func (DB *Database) DelUser(hash string) error {
-  user, err := DB.GetUser("", hash)
-  if err != nil {
-    return err
-  } else {
-    db := DB.DBConnect()
-    defer db.Close()
+    user, err := DB.GetUser("", hash)
+    if err != nil {
+        return err
+    } else {
+        db := DB.DBConnect()
+        defer db.Close()
 
-    execSQL := `DELETE FROM users WHERE showname = $1`
+        execSQL := `DELETE FROM users WHERE showname = $1`
 
-    db.Exec(execSQL, user.ShowName)
-    log.Printf("SUCCESS: User(%s) deleted", hash)
-    return nil
-  }
+        db.Exec(execSQL, user.ShowName)
+        log.Printf("SUCCESS: User(%s) deleted", hash)
+        return nil
+    }
 }
 
 // List rooms
 func (DB *Database) ListRooms() ([]string, []string, error) {
-  db := DB.DBConnect()
-  defer db.Close()
+    db := DB.DBConnect()
+    defer db.Close()
 
-  execSQL := `
+    execSQL := `
     SELECT name, hash FROM rooms WHERE is_public = 'true';
-  `
+    `
 
-  rows, err := db.Query(execSQL)
-  defer rows.Close()
+    rows, err := db.Query(execSQL)
+    defer rows.Close()
 
-  if err != nil {
-    return nil, nil, err
-  } else {
-    var names []string
-    var hashes []string
-    for rows.Next() {
-      var name string
-      var hash string
-      if err := rows.Scan(&name, &hash); err != nil {
-        log.Println("ERROR: ", err)
+    if err != nil {
         return nil, nil, err
-      }
-      names = append(names, name)
-      hashes = append(hashes, hash)
+    } else {
+        var names []string
+        var hashes []string
+        for rows.Next() {
+            var name string
+            var hash string
+            if err := rows.Scan(&name, &hash); err != nil {
+                log.Println("ERROR: ", err)
+                return nil, nil, err
+            }
+            names = append(names, name)
+            hashes = append(hashes, hash)
+        }
+        return names, hashes, nil
     }
-    return names, hashes, nil
-  }
 }
 
 // Getting room info
 func (DB *Database) GetRoom(by string, search_word string) (*Room, error) {
-  db := DB.DBConnect()
-  defer db.Close()
+    db := DB.DBConnect()
+    defer db.Close()
 
-  execSQL := `
+    execSQL := `
     SELECT name, creator_hash, hash, is_public, clients FROM rooms WHERE
-  `
+    `
 
-  if by == "name" {
-    execSQL += "name = $1;"
-  } else {
-    execSQL += "hash = $1;"
-  }
+    if by == "name" {
+        execSQL += "name = $1;"
+    } else {
+        execSQL += "hash = $1;"
+    }
 
-  row := db.QueryRow(execSQL, search_word)
-  var room Room
-  err := row.Scan(
-    &room.Name, &room.CreatorHash, &room.Hash,
-    &room.IsPublic, pq.Array(&room.Clients),
-  )
-  if err != nil || room.Name == "" {
-    return nil, err
-  }
+    row := db.QueryRow(execSQL, search_word)
+    var room Room
+    err := row.Scan(
+        &room.Name, &room.CreatorHash, &room.Hash,
+        &room.IsPublic, pq.Array(&room.Clients),
+        )
+    if err != nil || room.Name == "" {
+        return nil, err
+    }
 
-  return &room, nil
+    return &room, nil
 }
 
 // Creates new room
 func (DB *Database) BuildRoom(name string, creator_hash string, is_public bool) error {
-  db := DB.DBConnect()
-  defer db.Close()
+    db := DB.DBConnect()
+    defer db.Close()
 
-  roomHash := universal.Data2Hash(map[string]any{
-    "Name":         name,
-    "CreatorHash":  creator_hash,
-  })
+    roomHash := universal.Data2Hash(map[string]any{
+        "Name":         name,
+        "CreatorHash":  creator_hash,
+    })
 
-  room, err := DB.GetRoom("name", name)
-  if err != nil {
-    room = &Room {
-      Name:         name,
-      CreatorHash:  creator_hash,
-      Hash:         roomHash,
-      IsPublic:     is_public,
-      Clients:      []string{creator_hash},
-    }
+    room, err := DB.GetRoom("name", name)
+    if err != nil {
+        room = &Room {
+            Name:         name,
+            CreatorHash:  creator_hash,
+            Hash:         roomHash,
+            IsPublic:     is_public,
+            Clients:      []string{creator_hash},
+        }
 
-    execSQL := `
-      INSERT INTO rooms (
+        execSQL := `
+        INSERT INTO rooms (
         name, creator_hash, hash, is_public, clients
-      ) VALUES (
+        ) VALUES (
         $1, $2, $3, $4, $5
-      );
-    `
+        );
+        `
 
-    db.Exec(execSQL, &room.Name, &room.CreatorHash,
+        db.Exec(execSQL, &room.Name, &room.CreatorHash,
             &room.Hash, &room.IsPublic, pq.Array(&room.Clients),
-    )
-    log.Printf("SUCCESS: Room(%s) is built", roomHash)
-    return nil
-  } else {
-    return err
-  }
+            )
+        log.Printf("SUCCESS: Room(%s) is built", roomHash)
+        return nil
+    } else {
+        return err
+    }
 }
 
 // Switches room privacy
 func (DB *Database) SwitchRoomPriv(hash string) {
-  db := DB.DBConnect()
-  defer db.Close()
+    db := DB.DBConnect()
+    defer db.Close()
 
-  room, _ := DB.GetRoom("", hash)
-  if room == nil {
-    log.Printf("ERROR: Room(%s) doesn't exist", hash)
-    return
-  }
+    room, _ := DB.GetRoom("", hash)
+    if room == nil {
+        log.Printf("ERROR: Room(%s) doesn't exist", hash)
+        return
+    }
 
-  is_public := room.IsPublic
-  if is_public {
-    execSQL := `UPDATE rooms SET is_public = false WHERE hash = $1`
-    db.Exec(execSQL, hash)
-  } else {
-    execSQL := `UPDATE rooms SET is_public = true WHERE hash = $1`
-    db.Exec(execSQL, hash)
-  }
-  log.Printf("SUCCESS: Room(%s) privacy status changed", hash)
+    is_public := room.IsPublic
+    if is_public {
+        execSQL := `UPDATE rooms SET is_public = false WHERE hash = $1`
+        db.Exec(execSQL, hash)
+    } else {
+        execSQL := `UPDATE rooms SET is_public = true WHERE hash = $1`
+        db.Exec(execSQL, hash)
+    }
+    log.Printf("SUCCESS: Room(%s) privacy status changed", hash)
 }
 
 // Close room

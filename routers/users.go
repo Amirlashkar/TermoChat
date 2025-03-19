@@ -1,7 +1,6 @@
 package routers
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -22,11 +21,11 @@ func user_signup(w http.ResponseWriter, r *http.Request) {
 	var db *components.Database
 	err := db.SignUp(user)
 	if err != nil {
-		writeJsonResp(w, http.StatusBadRequest, "", err.Error())
+		jsonResp(w, "", err.Error(), "error", http.StatusBadRequest, map[string]any{})
 		return
 	} else {
 		message := fmt.Sprintf("User %s signed up successfully", user.Hash)
-		writeJsonResp(w, http.StatusAccepted, message, "")
+		jsonResp(w, message, "", "ok", http.StatusOK, map[string]any{})
 		return
 	}
 }
@@ -38,16 +37,34 @@ func user_login(w http.ResponseWriter, r *http.Request) {
 	var db *components.Database
 	user, err := db.LogIn(showname, password)
 	if err != nil {
-		writeJsonResp(w, http.StatusBadRequest, "", err.Error())
+		jsonResp(w, "", err.Error(), "error", http.StatusBadRequest, map[string]any{})
 	} else {
 		token_resp := universal.GenerateJWT(user.Hash, 1*time.Hour)
-		w.WriteHeader(http.StatusAccepted)
-		json.NewEncoder(w).Encode(&token_resp)
+        data := map[string]any {
+            "token":      token_resp.Token,
+            "expires_at": token_resp.ExpiresAt,
+        }
+		jsonResp(w, "User logged in", "", "ok", http.StatusOK, data)
 	}
 }
 
-func ping(w http.ResponseWriter, r *http.Request) {
+func user_existance(w http.ResponseWriter, r *http.Request) {
+    show_name := r.FormValue("show_name")
 
+	var db *components.Database
+    user, err := db.GetUser("show_name", show_name)
+    if user == nil {
+		jsonResp(w, "", err.Error(), "error", http.StatusBadRequest, map[string]any{})
+    } else {
+		jsonResp(w, "user exists", "", "ok", http.StatusOK, map[string]any{})
+    }
+}
+
+// We use this function after tokenMiddleWare
+// to check if token is valid or user connection
+// would cause any issue
+func ping(w http.ResponseWriter, r *http.Request) {
+    jsonResp(w, "PONG", "", "ok", http.StatusOK, map[string]any{})
 }
 
 func user_logout(w http.ResponseWriter, r *http.Request) {
@@ -56,10 +73,10 @@ func user_logout(w http.ResponseWriter, r *http.Request) {
 	var db *components.Database
 	err := db.LogOut(thash)
 	if err != nil {
-		writeJsonResp(w, http.StatusBadRequest, "", err.Error())
+        jsonResp(w, "", err.Error(), "error", http.StatusBadRequest, map[string]any{})
 	} else {
 		message := fmt.Sprintf("User %s logged out", thash)
-		writeJsonResp(w, http.StatusOK, message, "")
+        jsonResp(w, message, "", "ok", http.StatusOK, map[string]any{})
 	}
 }
 
@@ -70,13 +87,12 @@ func user_rename(w http.ResponseWriter, r *http.Request) {
 	var db *components.Database
 	user, err := db.GetUser("", hash)
 	if err != nil {
-		writeJsonResp(w, http.StatusBadRequest, "", err.Error())
+        jsonResp(w, "", err.Error(), "error", http.StatusBadRequest, map[string]any{})
 	} else {
 		user.ShowName = new_name
-        // u.ReInit() // If this happens then we're up to change token per put requests
 		db.UpdateUser(user, hash)
-		message := fmt.Sprintf("User %s renamed ; NewHash: %s", hash, user.Hash)
-		writeJsonResp(w, http.StatusOK, message, "")
+		message := fmt.Sprintf("User %s renamed ; NewName: %s", hash, user.ShowName)
+        jsonResp(w, message, "", "ok", http.StatusOK, map[string]any{})
 	}
 }
 
@@ -88,15 +104,15 @@ func user_repass(w http.ResponseWriter, r *http.Request) {
 	var db *components.Database
 	user, err := db.GetUser("", hash)
 	if err != nil {
-		writeJsonResp(w, http.StatusBadRequest, "", err.Error())
+        jsonResp(w, "", err.Error(), "error", http.StatusBadRequest, map[string]any{})
 	} else {
 		err := user.Repass(current_pass, new_pass)
 		if err != nil {
-			writeJsonResp(w, http.StatusUnauthorized, "", err.Error())
+            jsonResp(w, "", err.Error(), "error", http.StatusUnauthorized, map[string]any{})
 		} else {
 			db.UpdateUser(user, hash)
-			message := fmt.Sprintf("User %s password changed", user.Hash)
-			writeJsonResp(w, http.StatusOK, message, "")
+			message := fmt.Sprintf("User %s password changed", user.ShowName)
+            jsonResp(w, message, "", "error", http.StatusOK, map[string]any{})
 		}
 	}
 }
